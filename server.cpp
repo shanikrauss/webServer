@@ -1,18 +1,14 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #include <iostream>
 using namespace std;
 #pragma comment(lib, "Ws2_32.lib")
 #include <winsock2.h>
 #include <string.h>
 #include <time.h>
-
-
-
-
-
-
-
-
+#include "StructsAndDefines.h"
+#include "SendMsgs.h"
 
 
 // מוסיפות CLINET חדש
@@ -27,7 +23,7 @@ void acceptConnection(int index);
 void receiveMessage(int index);
 
 //לשלוח הודעה
-void sendMessage(int index);
+//void sendMessage(int index);
 
 
 // שם אותם ככה כי אין לו כוח לשלוח את המערך, צריך להכניס למיין ולהוסיף לפונקציות, כולן צריכות לקבל אותו
@@ -98,7 +94,7 @@ void main()
 	// IP Port. The htons (host to network - short) function converts an
 	// unsigned short from host to TCP/IP network byte order 
 	// (which is big-endian).
-	serverService.sin_port = htons(TIME_PORT);
+	serverService.sin_port = htons(WEB_PORT);
 
 	// Bind the socket for client's requests.
 
@@ -200,7 +196,7 @@ void main()
 				switch (sockets[i].send)
 				{
 				case SEND:
-					sendMessage(i);
+					sendMessage(i, sockets);
 					break;
 				}
 			}

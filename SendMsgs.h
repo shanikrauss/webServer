@@ -2,6 +2,7 @@
 #define SENDMSGS_H
 
 #include <iostream>
+#include "StructsAndDefines.h"
 
 void updateFileContent(char* buffer, int bufLen, FILE* file);
 

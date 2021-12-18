@@ -1,4 +1,5 @@
-﻿#include "SendMsgs.h"
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include "SendMsgs.h"
 #include <iostream>
 using namespace std;
 #include <stdio.h>
@@ -66,7 +67,8 @@ void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen)
 
 char* getFileName(char* buffer)
 {
-
+	char a[2] = {"A"};
+	return a;
 }
 
 
@@ -136,7 +138,7 @@ void sendMessage(int index, SocketState* sockets)
 		}
 		else
 		{
-			updateFileContent(sockets[index].buffer, file);
+			updateFileContent(sockets[index].buffer, sockets[index].len, file);
 			sprintf(sendBuff, "HTTP/1.1 %d %s\nContent-Length: 0\n\n", status, statusReq);
 		}
 	}

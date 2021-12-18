@@ -12,13 +12,13 @@ struct SocketState
 	int len;
 };
 
-#define TIME_PORT = 27015;
-#define MAX_SOCKETS = 60; // כמה לקוחות לקבל במקביל
-#define EMPTY = 0; // לא מקבל שום דבר
-#define LISTEN = 1; // מקבל אבל הוא אמור לקבל בקשות לקשר
-#define RECEIVE = 2; // מחכה לקבל הודעות דאטה
-#define IDLE = 3; // בשביל הסנד - כאן אין מה לשלוח
-#define SEND = 4; // בשביל הסנד - יש מה לשלוח
+#define WEB_PORT 8080
+#define MAX_SOCKETS 60 // כמה לקוחות לקבל במקביל
+#define EMPTY 0 // לא מקבל שום דבר
+#define LISTEN 1 // מקבל אבל הוא אמור לקבל בקשות לקשר
+#define RECEIVE 2 // מחכה לקבל הודעות דאטה
+#define IDLE 3 // בשביל הסנד - כאן אין מה לשלוח
+#define SEND 4 // בשביל הסנד - יש מה לשלוח
 //const int SEND_TIME = 1; // איזה הודעה אני הולך לשלוח בשביל קריאות הקוד
 //const int SEND_SECONDS = 2; //איזה הודעה אני הולך לשלוח בשביל קריאות הקוד
 
