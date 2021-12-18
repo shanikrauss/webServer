@@ -151,6 +151,7 @@ void main()
 
 		//
 		// Wait for interesting event.
+		// 
 		// Note: First argument is ignored. The fourth is for exceptions.
 		// And as written above the last is a timeout, hence we are blocked if nothing happens.
 		//
@@ -300,6 +301,7 @@ void receiveMessage(int index)
 		{
 			// בודקאיזה הודעה שי בבאפר, ומעדכן את הסוקט בהתאם 
 
+			// כאן יש באגים באורך ההודעה צריך לעדכן 
 			if (strncmp(sockets[index].buffer, "GET", 3) == 0)
 			{
 				sockets[index].send = SEND;

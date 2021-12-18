@@ -99,6 +99,49 @@ FILE* getFilePutReq(char* buffer, int* status, char* statusReq)
 }
 
 
+void updateSendBuffGetReq(char* sendBuff, char* buffer)
+{
+	char fileName[30] = { "C:/temp/English.txt" };	
+	int i = 0;
+
+	while (buffer[i] != '\n')
+	{
+		if (strncmp(buffer + i, "lang=he", 7) == 0)
+		{
+			strcpy(fileName, "C:/temp/Hebrew.txt");
+			break;
+		}
+		else if (strncmp(buffer + i, "lang=fr", 7) == 0)
+		{
+			strcpy(fileName, "C:/temp/French.txt");
+			break;
+		}
+
+		i++;
+	}
+
+	FILE* file = fopen(fileName, "r");
+
+	if (file == NULL) //return FILE_NOT_EXIST; 
+	{
+		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nContent-Length: 0\n\n%s");
+		return;
+	}
+
+	fseek(file, 0L, SEEK_END);
+	int fileSize = ftell(file);
+	fseek(file, 0L, SEEK_SET);
+
+	char* htmlEnglish = (char*)malloc(sizeof(fileSize + 1));
+
+	fgets(htmlEnglish, fileSize, file);
+	fclose(file);
+	int lenHtml = strlen(htmlEnglish);
+
+	sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", lenHtml, htmlEnglish);
+	free(htmlEnglish);
+}
+
 void sendMessage(int index, SocketState* sockets)
 {
 	int bytesSent = 0;
@@ -107,24 +150,7 @@ void sendMessage(int index, SocketState* sockets)
 
 	if (sockets[index].sendSubType == GET)
 	{
-		FILE* file = fopen("English.html", "r");
-		if (file == NULL)
-		{
-			//return FILE_NOT_EXIST;
-		}
-
-		fseek(file, 0L, SEEK_END);
-		int fileSize = ftell(file);
-		fseek(file, 0L, SEEK_SET);
-
-		char* htmlEnglish = (char*)malloc(sizeof(fileSize + 1));
-
-		fgets(htmlEnglish, fileSize, file);
-		fclose(file);
-		int lenHtml = strlen(htmlEnglish);
-
-		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", fileSize, htmlEnglish);
-		free(htmlEnglish);
+		updateSendBuffGetReq(sendBuff, sockets[index].buffer);
 	}
 	else if (sockets[index].sendSubType == PUT)
 	{
