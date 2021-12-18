@@ -124,7 +124,7 @@ void updateSendBuffGetReq(char* sendBuff, char* buffer)
 
 	if (file == NULL) //return FILE_NOT_EXIST; 
 	{
-		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nContent-Length: 0\n\n%s");
+		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nContent-Length: 0\n\n");
 		return;
 	}
 
