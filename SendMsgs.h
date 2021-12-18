@@ -3,11 +3,16 @@
 
 #include <iostream>
 
+void updateFileContent(char* buffer, int bufLen, FILE* file);
 
-void updateFileContent(char* buffer, FILE* file);
+int getBodyLen(char* buffer, int bufLen);
+
+void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen);
+
+char* getFileName(char* buffer);
 
 FILE* getFilePutReq(char* buffer, int* status, char* statusReq);
 
-void sendMessage(int index);
+void sendMessage(int index, SocketState* sockets);
 
 #endif

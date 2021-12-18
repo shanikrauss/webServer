@@ -101,8 +101,8 @@ void sendMessage(int index, SocketState* sockets)
 {
 	int bytesSent = 0;
 	char sendBuff[255];
-
 	SOCKET msgSocket = sockets[index].id;
+
 	if (sockets[index].sendSubType == GET)
 	{
 		FILE* file = fopen("English.html", "r");
@@ -111,13 +111,18 @@ void sendMessage(int index, SocketState* sockets)
 			//return FILE_NOT_EXIST;
 		}
 
-		char htmlEnglish[256];
+		fseek(file, 0L, SEEK_END);
+		int fileSize = ftell(file);
+		fseek(file, 0L, SEEK_SET);
 
-		fgets(htmlEnglish, 256, file);
+		char* htmlEnglish = (char*)malloc(sizeof(fileSize + 1));
+
+		fgets(htmlEnglish, fileSize, file);
 		fclose(file);
 		int lenHtml = strlen(htmlEnglish);
 
-		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", lenHtml, htmlEnglish);
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", fileSize, htmlEnglish);
+		free(htmlEnglish);
 	}
 	else if (sockets[index].sendSubType == PUT)
 	{
@@ -141,10 +146,10 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == POST)
 	{
-		int bodyLen = getBodyLen(sockets[index].buffer);
+		int bodyLen = getBodyLen(sockets[index].buffer,  sockets[index].len);
 		char* bodyMsg = (char*)malloc(sizeof(bodyLen));
 
-		getBodyMsg(sockets[index].buffer, bodyMsg, bodyLen);
+		getBodyMsg(sockets[index].buffer, sockets[index].len, bodyMsg, bodyLen);
 		printf("%s", bodyMsg);
 	}
 	else if (sockets[index].sendSubType == TRACE)
@@ -153,7 +158,7 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == DELETE)
 	{
-		char* fileName = getFileName(buffer);
+		char* fileName = getFileName(sockets[index].buffer);
 
 		if (remove(fileName) == 0)
 		{
