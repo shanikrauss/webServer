@@ -102,10 +102,9 @@ FILE* getFilePutReq(char* buffer, int* status, char* statusReq)
 	return file;
 }
 
-
-void updateSendBuffGetReq(char* sendBuff, char* buffer)
+FILE* getFileFromBuffer(char* buffer)
 {
-	char fileName[30] = { "C:/temp/English.txt" };	
+	char fileName[30] = { "C:/temp/English.txt" };
 	int i = 0;
 
 	while (buffer[i] != '\0' && buffer[i] != '\n')
@@ -126,28 +125,70 @@ void updateSendBuffGetReq(char* sendBuff, char* buffer)
 
 	FILE* file = fopen(fileName, "r");
 
+	return file;
+}
+
+void getFileContent(FILE* file, char** content)
+{
+	fseek(file, 0L, SEEK_END);
+	int fileSize = ftell(file);
+	fseek(file, 0L, SEEK_SET);
+
+	*content = (char*)malloc(sizeof(fileSize));
+
+	//fgets(htmlEnglish, fileSize + 1, file);
+	//fread(htmlEnglish, sizeof(char), fileSize + 1, file);
+	fread((*content), sizeof(char), fileSize, file);
+	fclose(file);
+
+	(*content)[fileSize - 1] = '\0';
+}
+
+void updateSendBuffGetOrHeadReq(char* sendBuff, char* buffer, int req)
+{
+	FILE* file = getFileFromBuffer(buffer);
+
 	if (file == NULL) //return FILE_NOT_EXIST; 
 	{
 		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nContent-Length: 0\n\n");
 		return;
 	}
 
-	fseek(file, 0L, SEEK_END);
-	int fileSize = ftell(file);
-	fseek(file, 0L, SEEK_SET);
-	
-	char* htmlEnglish = (char*)malloc(sizeof(fileSize));
+	char* htmlPageContent = NULL;
 
-	//fgets(htmlEnglish, fileSize + 1, file);
-	//fread(htmlEnglish, sizeof(char), fileSize + 1, file);
-	fread(htmlEnglish, sizeof(char), fileSize, file);
-	fclose(file);
+	getFileContent(file, &htmlPageContent);
+	int lenHtml = strlen(htmlPageContent);
 
-	htmlEnglish[fileSize - 1] = '\0';
-	int lenHtml = strlen(htmlEnglish);
+	if (req == GET)
+	{
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", lenHtml, htmlPageContent);
+	}
+	else // req == HEAD
+	{
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n", lenHtml);
+	}
 
-	sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", lenHtml, htmlEnglish);
-	//free(htmlEnglish);
+	//free(htmlPageContent);
+}
+
+void updateSendBuffHeadReq(char* sendBuff, char* buffer)
+{
+	updateSendBuffGetOrHeadReq(sendBuff, buffer, HEAD);
+}
+
+void updateSendBuffGetReq(char* sendBuff, char* buffer)
+{
+	updateSendBuffGetOrHeadReq(sendBuff, buffer, GET);
+}
+
+void printPostReq(char* buffer, char** bodyMsg)
+{
+	int lenLastRecv = strlen(buffer);
+	int bodyLen = getBodyLen(buffer, lenLastRecv);
+	(*bodyMsg) = (char*)malloc(sizeof(bodyLen+1));
+
+	getBodyMsg(buffer, lenLastRecv, (*bodyMsg), bodyLen);
+	printf("%s", *bodyMsg);
 }
 
 void sendMessage(int index, SocketState* sockets)
@@ -164,7 +205,7 @@ void sendMessage(int index, SocketState* sockets)
 	{
 		int status;
 		char statusReq[8];
-		FILE* file = getFilePutReq(sockets[index].buffer[0], &status, statusReq); // = fopen(fileName, "w");
+		FILE* file = getFilePutReq(sockets[index].lastRecv, &status, statusReq); // = fopen(fileName, "w");
 
 		if (file == NULL)
 		{
@@ -178,16 +219,19 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == HEAD)
 	{
-
+		updateSendBuffHeadReq(sendBuff, sockets[index].lastRecv);
 	}
 	else if (sockets[index].sendSubType == POST)
 	{
-		int lenLastRecv = strlen(sockets[index].lastRecv);
-		int bodyLen = getBodyLen(sockets[index].lastRecv, lenLastRecv);
-		char* bodyMsg = (char*)malloc(sizeof(bodyLen));
+		char* bodyMsg = NULL;
 
-		getBodyMsg(sockets[index].lastRecv, lenLastRecv, bodyMsg, bodyLen);
-		printf("%s", bodyMsg);
+		printPostReq(sockets[index].lastRecv, &bodyMsg);
+		int contentLength = strlen(bodyMsg);
+
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\n\n%s", contentLength, bodyMsg);
+		//strcpy(sendBuff, bodyMsg); // needed?
+
+		//free(bodyMsg);
 	}
 	else if (sockets[index].sendSubType == TRACE)
 	{
