@@ -358,13 +358,13 @@ void receiveMessage(int index)
 				// אורך ההודעה שטיפלנו
 				//sockets[index].len -= 3;
 				return;
-			}/*
+			}
 			else if (strncmp(buffer, "PUT", 3) == 0)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = PUT;				
-				copyAllMsgsToStart(sockets[index]);
-
+				strcpy(sockets[index].lastRecv, sockets[index].buffer[0]);
+				copyAllMsgsToStart(&sockets[index]);
 				//memcpy(sockets[index].buffer, &sockets[index].buffer[3], sockets[index].len - 3);
 				//sockets[index].len -= 3;
 				return;
@@ -373,7 +373,8 @@ void receiveMessage(int index)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = HEAD;
-				copyAllMsgsToStart(sockets[index]);
+				strcpy(sockets[index].lastRecv, sockets[index].buffer[0]);
+				copyAllMsgsToStart(&sockets[index]);
 
 
 				//memcpy(sockets[index].buffer, &sockets[index].buffer[4], sockets[index].len - 4);
@@ -384,8 +385,8 @@ void receiveMessage(int index)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = POST;
-				copyAllMsgsToStart(sockets[index]);
-
+				strcpy(sockets[index].lastRecv, sockets[index].buffer[0]);
+				copyAllMsgsToStart(&sockets[index]);
 				//memcpy(sockets[index].buffer, &sockets[index].buffer[4], sockets[index].len - 4);
 				//sockets[index].len -= 4;
 				return;
@@ -394,8 +395,8 @@ void receiveMessage(int index)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = TRACE;
-				copyAllMsgsToStart(sockets[index]);
-
+				strcpy(sockets[index].lastRecv, sockets[index].buffer[0]);
+				copyAllMsgsToStart(&sockets[index]);
 				//memcpy(sockets[index].buffer, &sockets[index].buffer[5], sockets[index].len - 5);
 				//sockets[index].len -= 5;
 				return;
@@ -404,8 +405,8 @@ void receiveMessage(int index)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = DELETE;
-				copyAllMsgsToStart(sockets[index]);
-
+				strcpy(sockets[index].lastRecv, sockets[index].buffer[0]);
+				copyAllMsgsToStart(&sockets[index]);
 				//memcpy(sockets[index].buffer, &sockets[index].buffer[6], sockets[index].len - 6);
 				//sockets[index].len -= 6;
 				return;
@@ -414,12 +415,12 @@ void receiveMessage(int index)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = OPTIONS;
-				copyAllMsgsToStart(sockets[index]);
-
+				strcpy(sockets[index].lastRecv, sockets[index].buffer[0]);
+				copyAllMsgsToStart(&sockets[index]);
 				//memcpy(sockets[index].buffer, &sockets[index].buffer[7], sockets[index].len - 7);
 				//sockets[index].len -= 7;
 				return;
-			}*/
+			}
 			else if (strncmp(buffer, "Exit", 4) == 0)
 			{
 				closesocket(msgSocket);

@@ -53,16 +53,20 @@ int getBodyLen(char* buffer, int bufLen)
 
 void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen)
 {
+	int i = bufLen - bodyLen;
+	strncpy(bodyMsg, buffer + i, bodyLen);
+	bodyMsg[bodyLen] = '\0';
+	/*
 	for (int i = 0; i < bufLen - 1; i++)
 	{
-		if (buffer[i] == '\n' && buffer[i + 1] == '\n')
+		if (buffer[i] == '\r' && buffer[i + 1] == '\n' && buffer[i + 2] == '\r' && buffer[i + 3] == '\n')
 		{
 			strncpy(bodyMsg, buffer + i + 2, bodyLen);
 			bodyMsg[bodyLen] = '\0';
 
 			return;
 		}
-	}
+	}*/
 }
 
 char* getFileName(char* buffer)
@@ -132,13 +136,14 @@ void updateSendBuffGetReq(char* sendBuff, char* buffer)
 	int fileSize = ftell(file);
 	fseek(file, 0L, SEEK_SET);
 	
-	char* htmlEnglish = (char*)malloc(sizeof(fileSize + 1));
+	char* htmlEnglish = (char*)malloc(sizeof(fileSize));
 
 	//fgets(htmlEnglish, fileSize + 1, file);
 	//fread(htmlEnglish, sizeof(char), fileSize + 1, file);
 	fread(htmlEnglish, sizeof(char), fileSize, file);
-
 	fclose(file);
+
+	htmlEnglish[fileSize - 1] = '\0';
 	int lenHtml = strlen(htmlEnglish);
 
 	sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", lenHtml, htmlEnglish);
@@ -177,10 +182,11 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == POST)
 	{
-		int bodyLen = getBodyLen(sockets[index].buffer[0], sockets[index].bufferLen[0]);
+		int lenLastRecv = strlen(sockets[index].lastRecv);
+		int bodyLen = getBodyLen(sockets[index].lastRecv, lenLastRecv);
 		char* bodyMsg = (char*)malloc(sizeof(bodyLen));
 
-		getBodyMsg(sockets[index].buffer[0], sockets[index].bufferLen[0], bodyMsg, bodyLen);
+		getBodyMsg(sockets[index].lastRecv, lenLastRecv, bodyMsg, bodyLen);
 		printf("%s", bodyMsg);
 	}
 	else if (sockets[index].sendSubType == TRACE)
