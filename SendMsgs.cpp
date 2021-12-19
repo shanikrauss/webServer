@@ -16,7 +16,7 @@ void updateFileContent(char* buffer, int bufLen, FILE* file)
 
 	getBodyMsg(buffer, bufLen, fileContant, fileContentLen);
 	fputs(fileContant, file); // write to file
-	free(fileContant);
+	//free(fileContant);
 	fclose(file);
 }
 
@@ -69,10 +69,50 @@ void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen)
 	}*/
 }
 
-char* getFileName(char* buffer)
+void getFileName(char* buffer, char** fullFileName)
 {
-	char a[2] = {"A"};
-	return a;
+	*fullFileName = (char*)malloc(sizeof("C:/temp/"));
+	strcpy(*fullFileName, "C:/temp/");
+
+	char* fileName = (char*)malloc(sizeof(2));
+	int fileNameSize = 2;
+	int curSize = 0;
+	int i = 0;
+
+	while (buffer[i] != '\n')
+	{
+		if (buffer[i] == '/')
+		{
+			while (strncmp(buffer + i, ".txt", 4) != 0)
+			{
+				if (curSize == fileNameSize)
+				{
+					fileName = (char*)realloc(fileName, fileNameSize * 2);
+					fileNameSize *= 2;
+				}
+
+				fileName[curSize] = buffer[i];
+				curSize++;
+				i++;
+			}
+			if (curSize + 5 > fileNameSize)
+			{
+				fileName = (char*)realloc(fileName, fileNameSize * 2);
+				fileNameSize *= 2;
+			}
+
+			strcat(fileName, ".txt");
+			int len = strlen(fileName);
+			int newLen = len + sizeof("C:/temp/");
+
+			*fullFileName = (char*)realloc(*fullFileName, newLen);
+			strcat(*fullFileName, fileName);
+
+			return;
+		}
+
+		i++;
+	}
 }
 
 
@@ -83,9 +123,11 @@ char* getFileName(char* buffer)
 FILE* getFilePutReq(char* buffer, int* status, char* statusReq)
 {
 	FILE* file;
-	char* fileName = getFileName(buffer);
+	char* fileName = NULL;
 
-	if (file = fopen("fileName", "r+"))
+	getFileName(buffer, &fileName);
+
+	if (file = fopen(fileName, "r+"))
 	{
 		*status = 200;
 		strcpy(statusReq, "OK");
@@ -213,7 +255,7 @@ void sendMessage(int index, SocketState* sockets)
 		}
 		else
 		{
-			updateFileContent(sockets[index].buffer[0], sockets[index].bufferLen[0], file);
+			updateFileContent(sockets[index].lastRecv, strlen(sockets[index].lastRecv), file);
 			sprintf(sendBuff, "HTTP/1.1 %d %s\nContent-Length: 0\n\n", status, statusReq);
 		}
 	}
@@ -236,7 +278,7 @@ void sendMessage(int index, SocketState* sockets)
 	else if (sockets[index].sendSubType == TRACE)
 	{
 
-	}
+	}/*
 	else if (sockets[index].sendSubType == DELETE)
 	{
 		char* fileName = getFileName(sockets[index].buffer[0]);
@@ -253,7 +295,7 @@ void sendMessage(int index, SocketState* sockets)
 
 			printf("Unable to delete the file");
 		}
-	}
+	}*/
 	else if (sockets[index].sendSubType == OPTIONS)
 	{
 
