@@ -104,7 +104,7 @@ void updateSendBuffGetReq(char* sendBuff, char* buffer)
 	char fileName[30] = { "C:/temp/English.txt" };	
 	int i = 0;
 
-	while (buffer[i] != '\n')
+	while (buffer[i] != '\0' && buffer[i] != '\n')
 	{
 		if (strncmp(buffer + i, "lang=he", 7) == 0)
 		{
@@ -131,15 +131,18 @@ void updateSendBuffGetReq(char* sendBuff, char* buffer)
 	fseek(file, 0L, SEEK_END);
 	int fileSize = ftell(file);
 	fseek(file, 0L, SEEK_SET);
-
+	
 	char* htmlEnglish = (char*)malloc(sizeof(fileSize + 1));
 
-	fgets(htmlEnglish, fileSize, file);
+	//fgets(htmlEnglish, fileSize + 1, file);
+	//fread(htmlEnglish, sizeof(char), fileSize + 1, file);
+	fread(htmlEnglish, sizeof(char), fileSize, file);
+
 	fclose(file);
 	int lenHtml = strlen(htmlEnglish);
 
 	sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", lenHtml, htmlEnglish);
-	free(htmlEnglish);
+	//free(htmlEnglish);
 }
 
 void sendMessage(int index, SocketState* sockets)
@@ -150,13 +153,13 @@ void sendMessage(int index, SocketState* sockets)
 
 	if (sockets[index].sendSubType == GET)
 	{
-		updateSendBuffGetReq(sendBuff, sockets[index].buffer);
+		updateSendBuffGetReq(sendBuff, sockets[index].lastRecv);
 	}
 	else if (sockets[index].sendSubType == PUT)
 	{
 		int status;
 		char statusReq[8];
-		FILE* file = getFilePutReq(sockets[index].buffer, &status, statusReq); // = fopen(fileName, "w");
+		FILE* file = getFilePutReq(sockets[index].buffer[0], &status, statusReq); // = fopen(fileName, "w");
 
 		if (file == NULL)
 		{
@@ -164,7 +167,7 @@ void sendMessage(int index, SocketState* sockets)
 		}
 		else
 		{
-			updateFileContent(sockets[index].buffer, sockets[index].len, file);
+			updateFileContent(sockets[index].buffer[0], sockets[index].bufferLen[0], file);
 			sprintf(sendBuff, "HTTP/1.1 %d %s\nContent-Length: 0\n\n", status, statusReq);
 		}
 	}
@@ -174,10 +177,10 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == POST)
 	{
-		int bodyLen = getBodyLen(sockets[index].buffer,  sockets[index].len);
+		int bodyLen = getBodyLen(sockets[index].buffer[0], sockets[index].bufferLen[0]);
 		char* bodyMsg = (char*)malloc(sizeof(bodyLen));
 
-		getBodyMsg(sockets[index].buffer, sockets[index].len, bodyMsg, bodyLen);
+		getBodyMsg(sockets[index].buffer[0], sockets[index].bufferLen[0], bodyMsg, bodyLen);
 		printf("%s", bodyMsg);
 	}
 	else if (sockets[index].sendSubType == TRACE)
@@ -186,7 +189,7 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == DELETE)
 	{
-		char* fileName = getFileName(sockets[index].buffer);
+		char* fileName = getFileName(sockets[index].buffer[0]);
 
 		if (remove(fileName) == 0)
 		{

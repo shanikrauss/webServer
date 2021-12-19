@@ -230,7 +230,8 @@ bool addSocket(SOCKET id, int what)
 			sockets[i].id = id;
 			sockets[i].recv = what; // status
 			sockets[i].send = IDLE; 
-			sockets[i].len = 0;
+			//sockets[i].len = 0;
+			sockets[i].avilable = 0;
 			socketsCount++;
 			return (true);
 		}
@@ -243,6 +244,13 @@ void removeSocket(int index)
 {
 	sockets[index].recv = EMPTY;
 	sockets[index].send = EMPTY;
+
+	for (int i = 0; i < 10; i++)
+	{
+		sockets[index].buffer[i][0] = '\0';
+		sockets[index].bufferLen[i] = 0;
+	}
+
 	socketsCount--;
 }
 
@@ -268,12 +276,37 @@ void acceptConnection(int index)
 	return;
 }
 
+void copyAllMsgsToStart(SocketState* socket)
+{
+	for (int i = 1; i < 10; i++)
+	{
+		strcpy(socket->buffer[i - 1], socket->buffer[i]);
+		socket->bufferLen[i - 1] = socket->bufferLen[i];
+	}
+
+	socket->buffer[9][0] = '\0';
+	socket->bufferLen[9] = 0;
+
+	for (int i = 0; i < 10; i++)
+	{
+		if (socket->bufferLen[i] == 0)
+		{
+			socket->avilable = i;
+			break;
+		}
+	}
+}
+
+
 void receiveMessage(int index)
 {
 	SOCKET msgSocket = sockets[index].id; // הלקוח שלח לנו הודעה
 
-	int len = sockets[index].len;
-	int bytesRecv = recv(msgSocket, &sockets[index].buffer[len], sizeof(sockets[index].buffer) - len, 0);
+	int avilable = sockets[index].avilable;
+
+	//int bytesRecv = recv(msgSocket, sockets[index].buffer[avilable], sizeof(sockets[index].buffer) - avilable, 0);
+	int bytesRecv = recv(msgSocket, sockets[index].buffer[avilable], sizeof(sockets[index].buffer[avilable]), 0);
+
 	// אנחנו מביאים את ההודעה לבאפר
 
 	if (SOCKET_ERROR == bytesRecv)
@@ -289,83 +322,111 @@ void receiveMessage(int index)
 		removeSocket(index);
 		return;
 	}
+	if (sockets[index].avilable == 10)
+	{
+		cout << "\t\tToo many Too many requests!\nThe request was not saved!\n";
+	}
 	else
 	{
-		sockets[index].buffer[len + bytesRecv] = '\0'; //add the null-terminating to make it a string
-		cout << "Time Server: Recieved: " << bytesRecv << " bytes of \"" << &sockets[index].buffer[len] << "\" message.\n";
+		sockets[index].buffer[avilable][bytesRecv] = '\0'; //add the null-terminating to make it a string
+		//sockets[index].buffer[len + bytesRecv] = '\0'; //add the null-terminating to make it a string
 
-		sockets[index].len += bytesRecv;
+		sockets[index].bufferLen[avilable] = bytesRecv;
+
+		cout << "Time Server: Recieved: " << bytesRecv << " bytes of \"" << sockets[index].buffer[avilable] << "\" message.\n";
+
+		//sockets[index].len += bytesRecv;
+		sockets[index].avilable++; // = sockets[index].avilable + 1 > 9 ? sockets[index].avilable : sockets[index].avilable + 1;
 
 		// כאן מכינים את עצמו לשלב של החזרת התשובה
-		if (sockets[index].len > 0)
+		//if (sockets[index].len > 0)
+		if (sockets[index].bufferLen[avilable] > 0)
 		{
 			// בודקאיזה הודעה שי בבאפר, ומעדכן את הסוקט בהתאם 
 
 			// כאן יש באגים באורך ההודעה צריך לעדכן 
-			if (strncmp(sockets[index].buffer, "GET", 3) == 0)
+			char* buffer = sockets[index].buffer[0];
+
+			if (strncmp(buffer, "GET", 3) == 0)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = GET;
+				strcpy(sockets[index].lastRecv, sockets[index].buffer[0]);
+				copyAllMsgsToStart(&sockets[index]);
 				// מעתיק את כל מה שיש אחרי ההודעה של טימסטרינג לתחילת הבאפר לכן 10 כי הגודל של המחרוזת הזאת היא 0 זה ישתנה אצלי
-				memcpy(sockets[index].buffer, &sockets[index].buffer[3], sockets[index].len - 3);
+				//memcpy(sockets[index].buffer, &sockets[index].buffer[3], sockets[index].len - 3);
 				// אורך ההודעה שטיפלנו
-				sockets[index].len -= 3;
+				//sockets[index].len -= 3;
 				return;
-			}
-			else if (strncmp(sockets[index].buffer, "PUT", 3) == 0)
+			}/*
+			else if (strncmp(buffer, "PUT", 3) == 0)
 			{
 				sockets[index].send = SEND;
-				sockets[index].sendSubType = PUT;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[3], sockets[index].len - 3);
-				sockets[index].len -= 3;
+				sockets[index].sendSubType = PUT;				
+				copyAllMsgsToStart(sockets[index]);
+
+				//memcpy(sockets[index].buffer, &sockets[index].buffer[3], sockets[index].len - 3);
+				//sockets[index].len -= 3;
 				return;
 			}
-			else if (strncmp(sockets[index].buffer, "HEAD", 4) == 0)
+			else if (strncmp(buffer, "HEAD", 4) == 0)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = HEAD;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[4], sockets[index].len - 4);
-				sockets[index].len -= 4;
+				copyAllMsgsToStart(sockets[index]);
+
+
+				//memcpy(sockets[index].buffer, &sockets[index].buffer[4], sockets[index].len - 4);
+				//sockets[index].len -= 4;
 				return;
 			}
-			else if (strncmp(sockets[index].buffer, "POST", 4) == 0)
+			else if (strncmp(buffer, "POST", 4) == 0)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = POST;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[4], sockets[index].len - 4);
-				sockets[index].len -= 4;
+				copyAllMsgsToStart(sockets[index]);
+
+				//memcpy(sockets[index].buffer, &sockets[index].buffer[4], sockets[index].len - 4);
+				//sockets[index].len -= 4;
 				return;
 			}
-			else if (strncmp(sockets[index].buffer, "TRACE", 5) == 0)
+			else if (strncmp(buffer, "TRACE", 5) == 0)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = TRACE;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[5], sockets[index].len - 5);
-				sockets[index].len -= 5;
+				copyAllMsgsToStart(sockets[index]);
+
+				//memcpy(sockets[index].buffer, &sockets[index].buffer[5], sockets[index].len - 5);
+				//sockets[index].len -= 5;
 				return;
 			}
-			else if (strncmp(sockets[index].buffer, "DELETE", 6) == 0)
+			else if (strncmp(buffer, "DELETE", 6) == 0)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = DELETE;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[6], sockets[index].len - 6);
-				sockets[index].len -= 6;
+				copyAllMsgsToStart(sockets[index]);
+
+				//memcpy(sockets[index].buffer, &sockets[index].buffer[6], sockets[index].len - 6);
+				//sockets[index].len -= 6;
 				return;
 			}
-			else if (strncmp(sockets[index].buffer, "OPTIONS", 7) == 0)
+			else if (strncmp(buffer, "OPTIONS", 7) == 0)
 			{
 				sockets[index].send = SEND;
 				sockets[index].sendSubType = OPTIONS;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[7], sockets[index].len - 7);
-				sockets[index].len -= 7;
+				copyAllMsgsToStart(sockets[index]);
+
+				//memcpy(sockets[index].buffer, &sockets[index].buffer[7], sockets[index].len - 7);
+				//sockets[index].len -= 7;
 				return;
-			}
-			else if (strncmp(sockets[index].buffer, "Exit", 4) == 0)
+			}*/
+			else if (strncmp(buffer, "Exit", 4) == 0)
 			{
 				closesocket(msgSocket);
 				removeSocket(index);
 				return;
 			}
+
 		}
 	}
 

@@ -8,8 +8,11 @@ struct SocketState
 	int	recv;			// Receiving? האם זה מישהו שאנחנו אמורים לקבל ממנו מידע כלומר עברנו את שלב הקליטה עשינו אקספט ועכשיו אנחנו מחכים ממנו להודעה
 	int	send;			// Sending? האם אנחנו בשלב של שליחת תשובה
 	int sendSubType;	// Sending sub-type איזה תשובה אם אנחנו בשלב של שליחת תשובה
-	char buffer[128]; // שומר את הבקשות כי תשובה אנחנו שולחים ישר
-	int len;
+	char lastRecv[500]; // מערך של הבקשה האחרונה
+	char buffer[10][500]; // שומר את הבקשות כי תשובה אנחנו שולחים ישר
+	int bufferLen[10];
+	int avilable;
+	//int len;
 };
 
 #define WEB_PORT 8080
