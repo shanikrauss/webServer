@@ -71,8 +71,10 @@ void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen)
 
 void getFileName(char* buffer, char** fullFileName)
 {
-	*fullFileName = (char*)malloc(sizeof("C:/temp/"));
-	strcpy(*fullFileName, "C:/temp/");
+	*fullFileName = (char*)malloc(sizeof("C:/temp"));
+	strcpy(*fullFileName, "C:/temp");
+
+	printf("%s", *fullFileName);
 
 	char* fileName = (char*)malloc(sizeof(2));
 	int fileNameSize = 2;
@@ -101,13 +103,18 @@ void getFileName(char* buffer, char** fullFileName)
 				fileNameSize *= 2;
 			}
 
+			printf("%s\n", fileName);
+			fileName[curSize] = '\0';
+
 			strcat(fileName, ".txt");
 			int len = strlen(fileName);
 			int newLen = len + sizeof("C:/temp/");
+			printf("%s\n", fileName);
+
 
 			*fullFileName = (char*)realloc(*fullFileName, newLen);
 			strcat(*fullFileName, fileName);
-
+			printf("%s", *fullFileName);
 			return;
 		}
 
@@ -278,10 +285,11 @@ void sendMessage(int index, SocketState* sockets)
 	else if (sockets[index].sendSubType == TRACE)
 	{
 
-	}/*
+	}
 	else if (sockets[index].sendSubType == DELETE)
 	{
-		char* fileName = getFileName(sockets[index].buffer[0]);
+		char* fileName = NULL;
+		getFileName(sockets[index].lastRecv, &fileName);
 
 		if (remove(fileName) == 0)
 		{
@@ -295,7 +303,7 @@ void sendMessage(int index, SocketState* sockets)
 
 			printf("Unable to delete the file");
 		}
-	}*/
+	}
 	else if (sockets[index].sendSubType == OPTIONS)
 	{
 
