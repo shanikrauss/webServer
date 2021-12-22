@@ -80,7 +80,7 @@ void updateSendBuffPostReq(char* sendBuff, char* buffer)
 	sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\n\n%s", SERVER_NAME, contentLength, bodyMsg);
 	free(bodyMsg);
 }
-
+/*
 void updateFileContent(char* buffer, int bufLen, FILE* file)
 {
 	int fileContentLen = getBodyLen(buffer, bufLen);
@@ -88,6 +88,26 @@ void updateFileContent(char* buffer, int bufLen, FILE* file)
 
 	getBodyMsg(buffer, bufLen, fileContant, fileContentLen);
 	fputs(fileContant, file); // write to file
+	free(fileContant);
+	fclose(file);
+}
+*/
+
+void updateFileContent(char* buffer, int bufLen, FILE* file)
+{
+	int fileContentLen = getBodyLen(buffer, bufLen);
+	char* fileContant = (char*)malloc(fileContentLen + 1); // +1 for '\0'
+
+	getBodyMsg(buffer, bufLen, fileContant, fileContentLen);
+
+	printf("%s", fileContant);
+
+	for (int i = 0; i < fileContentLen + 1; i++)
+	{
+		fprintf(file, "%c", fileContant[i]);
+	}
+
+	//fputs(fileContant, file); // write to file
 	free(fileContant);
 	fclose(file);
 }
@@ -131,18 +151,6 @@ void getFileName(char* buffer, char** fullFileName)
 
 			strcat(*fullFileName, ".txt");
 			printf("%s\n", *fullFileName);
-			/*int len = strlen(fileName);
-			printf("%s\n", fileName);
-
-			int newLen = len + strlen("C:/temp/");
-			newLen++; // for \0
-
-			*fullFileName = (char*)realloc(*fullFileName, newLen);
-			*fullFileName[]
-			printf("%s/n", *fullFileName);
-
-			strcat(*fullFileName, fileName);
-			printf("%s", *fullFileName);*/
 			return;
 		}
 
