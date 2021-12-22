@@ -6,19 +6,9 @@ using namespace std;
 #include <string.h>
 #include <ctype.h> 
 #include <winsock2.h>
-
 #include "StructsAndDefines.h"
 
-void updateFileContent(char* buffer, int bufLen, FILE* file)
-{
-	int fileContentLen = getBodyLen(buffer, bufLen);
-	char* fileContant = (char*)malloc(sizeof(fileContentLen + 1)); // +1 for '\0'
-
-	getBodyMsg(buffer, bufLen, fileContant, fileContentLen);
-	fputs(fileContant, file); // write to file
-	//free(fileContant);
-	fclose(file);
-}
+#define SERVER_NAME "Shani's awesome server"
 
 int getBodyLen(char* buffer, int bufLen)
 {
@@ -37,7 +27,7 @@ int getBodyLen(char* buffer, int bufLen)
 					count++;
 				}
 
-				char* num = (char*)malloc(sizeof(count + 1));
+				char* num = (char*)malloc(count + 1);
 
 				i -= count;
 				strncpy(num, buffer + i, count);
@@ -69,16 +59,49 @@ void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen)
 	}*/
 }
 
+void printPostReq(char* buffer, char** bodyMsg)
+{
+	int lenLastRecv = strlen(buffer);
+	int bodyLen = getBodyLen(buffer, lenLastRecv);
+	(*bodyMsg) = (char*)malloc(bodyLen + 1);
+
+	getBodyMsg(buffer, lenLastRecv, (*bodyMsg), bodyLen);
+	printf("%s", *bodyMsg);
+	
+}
+
+void updateSendBuffPostReq(char* sendBuff, char* buffer)
+{
+	char* bodyMsg = NULL;
+
+	printPostReq(buffer, &bodyMsg);
+	int contentLength = strlen(bodyMsg);
+
+	sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\n\n%s", SERVER_NAME, contentLength, bodyMsg);
+	free(bodyMsg);
+}
+
+void updateFileContent(char* buffer, int bufLen, FILE* file)
+{
+	int fileContentLen = getBodyLen(buffer, bufLen);
+	char* fileContant = (char*)malloc(fileContentLen + 1); // +1 for '\0'
+
+	getBodyMsg(buffer, bufLen, fileContant, fileContentLen);
+	fputs(fileContant, file); // write to file
+	free(fileContant);
+	fclose(file);
+}
+
 void getFileName(char* buffer, char** fullFileName)
 {
-	*fullFileName = (char*)malloc(sizeof("C:/temp"));
+	*fullFileName = (char*)malloc(strlen("C:/temp") + 1);
 	strcpy(*fullFileName, "C:/temp");
 
-	printf("%s", *fullFileName);
+	//printf("%s/n", *fullFileName);
 
-	char* fileName = (char*)malloc(sizeof(2));
-	int fileNameSize = 2;
-	int curSize = 0;
+	//char* fileName = (char*)malloc(2);
+	int fileNameSize = 8;
+	int curSize = 7;
 	int i = 0;
 
 	while (buffer[i] != '\n')
@@ -89,42 +112,43 @@ void getFileName(char* buffer, char** fullFileName)
 			{
 				if (curSize == fileNameSize)
 				{
-					fileName = (char*)realloc(fileName, fileNameSize * 2);
+					*fullFileName = (char*)realloc(*fullFileName, fileNameSize * 2);
 					fileNameSize *= 2;
 				}
 
-				fileName[curSize] = buffer[i];
+				(*fullFileName)[curSize] = buffer[i];
 				curSize++;
 				i++;
 			}
 			if (curSize + 5 > fileNameSize)
 			{
-				fileName = (char*)realloc(fileName, fileNameSize * 2);
+				*fullFileName = (char*)realloc(*fullFileName, fileNameSize * 2);
 				fileNameSize *= 2;
 			}
 
-			printf("%s\n", fileName);
-			fileName[curSize] = '\0';
+			(*fullFileName)[curSize] = '\0';
+			printf("%s\n", *fullFileName);
 
-			strcat(fileName, ".txt");
-			int len = strlen(fileName);
-			int newLen = len + sizeof("C:/temp/");
+			strcat(*fullFileName, ".txt");
+			printf("%s\n", *fullFileName);
+			/*int len = strlen(fileName);
 			printf("%s\n", fileName);
 
+			int newLen = len + strlen("C:/temp/");
+			newLen++; // for \0
 
 			*fullFileName = (char*)realloc(*fullFileName, newLen);
+			*fullFileName[]
+			printf("%s/n", *fullFileName);
+
 			strcat(*fullFileName, fileName);
-			printf("%s", *fullFileName);
+			printf("%s", *fullFileName);*/
 			return;
 		}
 
 		i++;
 	}
 }
-
-
-
-
 
 
 FILE* getFilePutReq(char* buffer, int* status, char* statusReq)
@@ -138,16 +162,17 @@ FILE* getFilePutReq(char* buffer, int* status, char* statusReq)
 	{
 		*status = 200;
 		strcpy(statusReq, "OK");
-		printf("file exists");
+		//printf("file exists");
 	}
 	else
 	{
 		*status = 201;
 		strcpy(statusReq, "Created");
 		file = fopen(fileName, "w");
-		printf("file doesn't exist");
+		//printf("file doesn't exist");
 	}
 
+	free(fileName);
 	return file;
 }
 
@@ -179,19 +204,32 @@ FILE* getFileFromBuffer(char* buffer)
 
 void getFileContent(FILE* file, char** content)
 {
-	fseek(file, 0L, SEEK_END);
-	int fileSize = ftell(file);
-	fseek(file, 0L, SEEK_SET);
+	*content = (char*)malloc(2);
+	int fileNameSize = 2;
+	int curSize = 0;
+	char ch;
 
-	*content = (char*)malloc(sizeof(fileSize));
+	while (!feof(file))
+	{
+		fscanf(file, "%c", &ch);
 
-	//fgets(htmlEnglish, fileSize + 1, file);
-	//fread(htmlEnglish, sizeof(char), fileSize + 1, file);
-	fread((*content), sizeof(char), fileSize, file);
+		if (curSize == fileNameSize)
+		{
+			fileNameSize *= 2;
+			*content = (char*)realloc(*content, fileNameSize);
+		}
+
+		(*content)[curSize] = ch;
+		curSize++;
+	}
+
 	fclose(file);
 
-	(*content)[fileSize - 1] = '\0';
+	(*content)[curSize] = '\0';
 }
+
+
+
 
 void updateSendBuffGetOrHeadReq(char* sendBuff, char* buffer, int req)
 {
@@ -199,7 +237,7 @@ void updateSendBuffGetOrHeadReq(char* sendBuff, char* buffer, int req)
 
 	if (file == NULL) //return FILE_NOT_EXIST; 
 	{
-		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nContent-Length: 0\n\n");
+		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nServer: %s\nContent-Length: 0\n\n", SERVER_NAME);
 		return;
 	}
 
@@ -210,14 +248,14 @@ void updateSendBuffGetOrHeadReq(char* sendBuff, char* buffer, int req)
 
 	if (req == GET)
 	{
-		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n%s", lenHtml, htmlPageContent);
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\nContent-Type: text/html\n\n%s", SERVER_NAME, lenHtml, htmlPageContent);
 	}
 	else // req == HEAD
 	{
-		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\nContent-Type: text/html\n\n", lenHtml);
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\nContent-Type: text/html\n\n",SERVER_NAME, lenHtml);
 	}
 
-	//free(htmlPageContent);
+	free(htmlPageContent);
 }
 
 void updateSendBuffHeadReq(char* sendBuff, char* buffer)
@@ -230,15 +268,47 @@ void updateSendBuffGetReq(char* sendBuff, char* buffer)
 	updateSendBuffGetOrHeadReq(sendBuff, buffer, GET);
 }
 
-void printPostReq(char* buffer, char** bodyMsg)
+void updateSendBuffPutReq(char* sendBuff, char* buffer)
 {
-	int lenLastRecv = strlen(buffer);
-	int bodyLen = getBodyLen(buffer, lenLastRecv);
-	(*bodyMsg) = (char*)malloc(sizeof(bodyLen+1));
+	int status;
+	char statusReq[8];
+	FILE* file = getFilePutReq(buffer, &status, statusReq); // = fopen(fileName, "w");
 
-	getBodyMsg(buffer, lenLastRecv, (*bodyMsg), bodyLen);
-	printf("%s", *bodyMsg);
+	if (file == NULL)
+	{
+		sprintf(sendBuff, "HTTP/1.1 501 Not Implemented\nServer: %s\nContent-Length: 0\n\n", SERVER_NAME);
+	}
+	else
+	{
+		updateFileContent(buffer, strlen(buffer), file);
+		sprintf(sendBuff, "HTTP/1.1 %d %s\nServer: %s\nContent-Length: 0\n\n", status, statusReq, SERVER_NAME);
+	}
 }
+
+
+
+void updateSendBuffDeleteReq(char* sendBuff, char* buffer)
+{
+	char* fileName = NULL;
+	getFileName(buffer, &fileName);
+
+	if (remove(fileName) == 0)
+	{
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: 0\n\n", SERVER_NAME);
+
+		printf("Deleted successfully");
+	}
+	else
+	{
+		sprintf(sendBuff, "HTTP/1.1 204 No Content\nServer: %s\nContent-Length: 0\n\n", SERVER_NAME);
+
+		printf("Unable to delete the file");
+	}
+
+	free(fileName);
+}
+
+
 
 void sendMessage(int index, SocketState* sockets)
 {
@@ -252,19 +322,7 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == PUT)
 	{
-		int status;
-		char statusReq[8];
-		FILE* file = getFilePutReq(sockets[index].lastRecv, &status, statusReq); // = fopen(fileName, "w");
-
-		if (file == NULL)
-		{
-			sprintf(sendBuff, "HTTP/1.1 501 Not Implemented\nContent-Length: 0\n\n");
-		}
-		else
-		{
-			updateFileContent(sockets[index].lastRecv, strlen(sockets[index].lastRecv), file);
-			sprintf(sendBuff, "HTTP/1.1 %d %s\nContent-Length: 0\n\n", status, statusReq);
-		}
+		updateSendBuffPutReq(sendBuff, sockets[index].lastRecv);
 	}
 	else if (sockets[index].sendSubType == HEAD)
 	{
@@ -272,41 +330,25 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == POST)
 	{
-		char* bodyMsg = NULL;
-
-		printPostReq(sockets[index].lastRecv, &bodyMsg);
-		int contentLength = strlen(bodyMsg);
-
-		sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: %d\n\n%s", contentLength, bodyMsg);
-		//strcpy(sendBuff, bodyMsg); // needed?
-
-		//free(bodyMsg);
+		updateSendBuffPostReq(sendBuff, sockets[index].lastRecv);
 	}
 	else if (sockets[index].sendSubType == TRACE)
 	{
+		int lenReq = strlen(sockets[index].lastRecv);
 
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Type: message/http\nContent-Length: %d\n\n%s", SERVER_NAME, lenReq, sockets[index].lastRecv);
 	}
 	else if (sockets[index].sendSubType == DELETE)
 	{
-		char* fileName = NULL;
-		getFileName(sockets[index].lastRecv, &fileName);
-
-		if (remove(fileName) == 0)
-		{
-			sprintf(sendBuff, "HTTP/1.1 200 OK\nContent-Length: 0\n\n");
-
-			printf("Deleted successfully");
-		}
-		else
-		{
-			sprintf(sendBuff, "HTTP/1.1 204 No Content\nContent-Length: 0\n\n");
-
-			printf("Unable to delete the file");
-		}
+		updateSendBuffDeleteReq(sendBuff, sockets[index].lastRecv);
 	}
 	else if (sockets[index].sendSubType == OPTIONS)
 	{
-
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nAllow: GET,HEAD,POST,PUT,DELETE,OPTIONS,TRACE\n\n", SERVER_NAME);
+	}
+	else
+	{
+		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nServer: %s\n\n", SERVER_NAME);
 	}
 
 	bytesSent = send(msgSocket, sendBuff, (int)strlen(sendBuff), 0);
