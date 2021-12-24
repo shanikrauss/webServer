@@ -4,15 +4,33 @@
 #include <iostream>
 #include "StructsAndDefines.h"
 
-void updateFileContent(char* buffer, int bufLen, FILE* file);
-
 int getBodyLen(char* buffer, int bufLen);
 
 void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen);
 
-char* getFileName(char* buffer);
+void printPostReq(char* buffer, char** pBodyMsg);
+
+void updateSendBuffPostReq(char* sendBuff, char* buffer);
+
+void updateFileContent(char* buffer, int bufLen, FILE* file);
+
+void getFileName(char* buffer, char** fullFileName);
 
 FILE* getFilePutReq(char* buffer, int* status, char* statusReq);
+
+FILE* getFileFromBuffer(char* buffer);
+
+void getFileContent(FILE* file, char** content);
+
+void updateSendBuffGetOrHeadReq(char* sendBuff, char* buffer, int req);
+
+void updateSendBuffHeadReq(char* sendBuff, char* buffer);
+
+void updateSendBuffGetReq(char* sendBuff, char* buffer);
+
+void updateSendBuffPutReq(char* sendBuff, char* buffer);
+
+void updateSendBuffDeleteReq(char* sendBuff, char* buffer);
 
 void sendMessage(SocketState* sockets, int index);
 

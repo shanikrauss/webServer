@@ -11,20 +11,6 @@ using namespace std;
 #include "SendMsgs.h"
 
 
-//// מוסיפות CLINET חדש
-//bool addSocket(SOCKET id, int what);
-//// מורידים CLINET ישן
-//void removeSocket(int index);
-//
-//// לקבל לקוח 
-//void acceptConnection(int index);
-//
-////לקבל הודעה
-//void receiveMessage(int index);
-//
-////לשלוח הודעה
-////void sendMessage(int index);
-
 // הלקוחות מסיימים לא בהכרח לפי הסדר שהם נכנסו
 // נחפש את המקום הראשון שפנוי ונוסיף אותו
 bool addSocket(SocketState* sockets, SOCKET id, int what, int* socketsCount);
@@ -37,7 +23,6 @@ void acceptConnection(SocketState* sockets, int index, int* socketsCount);
 void copyAllMsgsToStart(SocketState* socket);
 
 void updateSocketState(SocketState* socket, int type);
-
 
 void receiveMessage(SocketState* sockets, int index, int* socketsCount);
 
