@@ -291,7 +291,7 @@ void updateSendBuffDeleteReq(char* sendBuff, char* buffer)
 void sendMessage(SocketState* sockets, int index)
 {
 	int bytesSent = 0;
-	char sendBuff[255];
+	char sendBuff[2 * MAX_SIZE_REQUEST];
 	SOCKET msgSocket = sockets[index].id;
 
 	time_t timer;
