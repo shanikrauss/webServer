@@ -2,21 +2,10 @@
 #define STRUCTSANDDEFINES_H
 #include <winsock2.h>
 
-struct SocketState
-{
-	SOCKET id;			// Socket handle
-	int	recv;			// Receiving? האם זה מישהו שאנחנו אמורים לקבל ממנו מידע כלומר עברנו את שלב הקליטה עשינו אקספט ועכשיו אנחנו מחכים ממנו להודעה
-	int	send;			// Sending? האם אנחנו בשלב של שליחת תשובה
-	int sendSubType;	// Sending sub-type איזה תשובה אם אנחנו בשלב של שליחת תשובה
-	char lastRecv[500]; // מערך של הבקשה האחרונה
-	char buffer[10][500]; // שומר את הבקשות כי תשובה אנחנו שולחים ישר
-	int bufferLen[10];
-	int avilable;
-	//int len;
-};
-
 #define WEB_PORT 8080
 #define MAX_SOCKETS 60 // כמה לקוחות לקבל במקביל
+#define MAX_SIZE_REQUEST 500
+#define MAX_REQUESTS_PER_SOCKET 10
 #define EMPTY 0 // לא מקבל שום דבר
 #define LISTEN 1 // מקבל אבל הוא אמור לקבל בקשות לקשר
 #define RECEIVE 2 // מחכה לקבל הודעות דאטה
@@ -32,5 +21,20 @@ struct SocketState
 #define TRACE 5
 #define DELETE 6
 #define OPTIONS 7
+#define UNKNOWN_REQ -1
+
+struct SocketState
+{
+	SOCKET id;			// Socket handle
+	int	recv;			// Receiving? האם זה מישהו שאנחנו אמורים לקבל ממנו מידע כלומר עברנו את שלב הקליטה עשינו אקספט ועכשיו אנחנו מחכים ממנו להודעה
+	int	send;			// Sending? האם אנחנו בשלב של שליחת תשובה
+	int sendSubType;	// Sending sub-type איזה תשובה אם אנחנו בשלב של שליחת תשובה
+	char lastRecv[MAX_SIZE_REQUEST]; // מערך של הבקשה האחרונה
+	char buffer[MAX_REQUESTS_PER_SOCKET][MAX_SIZE_REQUEST]; // שומר את הבקשות כי תשובה אנחנו שולחים ישר
+	int bufferLen[MAX_REQUESTS_PER_SOCKET];
+	int avilable;
+	time_t timeOfLastReq;
+
+}; typedef struct SocketState SocketState;
 
 #endif

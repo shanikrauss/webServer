@@ -46,27 +46,16 @@ void getBodyMsg(char* buffer, int bufLen, char* bodyMsg, int bodyLen)
 	int i = bufLen - bodyLen;
 	strncpy(bodyMsg, buffer + i, bodyLen);
 	bodyMsg[bodyLen] = '\0';
-	/*
-	for (int i = 0; i < bufLen - 1; i++)
-	{
-		if (buffer[i] == '\r' && buffer[i + 1] == '\n' && buffer[i + 2] == '\r' && buffer[i + 3] == '\n')
-		{
-			strncpy(bodyMsg, buffer + i + 2, bodyLen);
-			bodyMsg[bodyLen] = '\0';
-
-			return;
-		}
-	}*/
 }
 
-void printPostReq(char* buffer, char** bodyMsg)
+void printPostReq(char* buffer, char** pBodyMsg)
 {
 	int lenLastRecv = strlen(buffer);
 	int bodyLen = getBodyLen(buffer, lenLastRecv);
-	(*bodyMsg) = (char*)malloc(bodyLen + 1);
+	(*pBodyMsg) = (char*)malloc(bodyLen + 1);
 
-	getBodyMsg(buffer, lenLastRecv, (*bodyMsg), bodyLen);
-	printf("%s", *bodyMsg);
+	getBodyMsg(buffer, lenLastRecv, (*pBodyMsg), bodyLen);
+	printf("%s", *pBodyMsg);
 	
 }
 
@@ -80,18 +69,6 @@ void updateSendBuffPostReq(char* sendBuff, char* buffer)
 	sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\n\n%s", SERVER_NAME, contentLength, bodyMsg);
 	free(bodyMsg);
 }
-/*
-void updateFileContent(char* buffer, int bufLen, FILE* file)
-{
-	int fileContentLen = getBodyLen(buffer, bufLen);
-	char* fileContant = (char*)malloc(fileContentLen + 1); // +1 for '\0'
-
-	getBodyMsg(buffer, bufLen, fileContant, fileContentLen);
-	fputs(fileContant, file); // write to file
-	free(fileContant);
-	fclose(file);
-}
-*/
 
 void updateFileContent(char* buffer, int bufLen, FILE* file)
 {
@@ -107,7 +84,6 @@ void updateFileContent(char* buffer, int bufLen, FILE* file)
 		fprintf(file, "%c", fileContant[i]);
 	}
 
-	//fputs(fileContant, file); // write to file
 	free(fileContant);
 	fclose(file);
 }
@@ -117,9 +93,6 @@ void getFileName(char* buffer, char** fullFileName)
 	*fullFileName = (char*)malloc(strlen("C:/temp") + 1);
 	strcpy(*fullFileName, "C:/temp");
 
-	//printf("%s/n", *fullFileName);
-
-	//char* fileName = (char*)malloc(2);
 	int fileNameSize = 8;
 	int curSize = 7;
 	int i = 0;
@@ -128,7 +101,7 @@ void getFileName(char* buffer, char** fullFileName)
 	{
 		if (buffer[i] == '/')
 		{
-			while (strncmp(buffer + i, ".txt", 4) != 0)
+			while (buffer[i] != '\0' && strncmp(buffer + i, ".txt", 4) != 0)
 			{
 				if (curSize == fileNameSize)
 				{
@@ -170,14 +143,12 @@ FILE* getFilePutReq(char* buffer, int* status, char* statusReq)
 	{
 		*status = 200;
 		strcpy(statusReq, "OK");
-		//printf("file exists");
 	}
 	else
 	{
 		*status = 201;
 		strcpy(statusReq, "Created");
 		file = fopen(fileName, "w");
-		//printf("file doesn't exist");
 	}
 
 	free(fileName);
@@ -186,19 +157,19 @@ FILE* getFilePutReq(char* buffer, int* status, char* statusReq)
 
 FILE* getFileFromBuffer(char* buffer)
 {
-	char fileName[30] = { "C:/temp/English.txt" };
+	char fileName[30] = { "C:/temp/English.html" };
 	int i = 0;
 
 	while (buffer[i] != '\0' && buffer[i] != '\n')
 	{
 		if (strncmp(buffer + i, "lang=he", 7) == 0)
 		{
-			strcpy(fileName, "C:/temp/Hebrew.txt");
+			strcpy(fileName, "C:/temp/Hebrew.html");
 			break;
 		}
 		else if (strncmp(buffer + i, "lang=fr", 7) == 0)
 		{
-			strcpy(fileName, "C:/temp/French.txt");
+			strcpy(fileName, "C:/temp/French.html");
 			break;
 		}
 
@@ -302,15 +273,14 @@ void updateSendBuffDeleteReq(char* sendBuff, char* buffer)
 
 	if (remove(fileName) == 0)
 	{
-		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: 0\n\n", SERVER_NAME);
-
-		printf("Deleted successfully");
+		int len = strlen("file deleted successfully");
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: %d\n\n%s", SERVER_NAME, len, "file deleted successfully");
 	}
 	else
 	{
-		sprintf(sendBuff, "HTTP/1.1 204 No Content\nServer: %s\nContent-Length: 0\n\n", SERVER_NAME);
+		int len = strlen("Unable to delete the file");
 
-		printf("Unable to delete the file");
+		sprintf(sendBuff, "HTTP/1.1 204 No Content\nServer: %s\nContent-Length: %d\n\n%s", SERVER_NAME, len, "Unable to delete the file");
 	}
 
 	free(fileName);
@@ -318,11 +288,15 @@ void updateSendBuffDeleteReq(char* sendBuff, char* buffer)
 
 
 
-void sendMessage(int index, SocketState* sockets)
+void sendMessage(SocketState* sockets, int index)
 {
 	int bytesSent = 0;
 	char sendBuff[255];
 	SOCKET msgSocket = sockets[index].id;
+
+	time_t timer;
+	time(&timer);
+	sockets[index].timeOfLastReq = timer;
 
 	if (sockets[index].sendSubType == GET)
 	{
@@ -352,9 +326,9 @@ void sendMessage(int index, SocketState* sockets)
 	}
 	else if (sockets[index].sendSubType == OPTIONS)
 	{
-		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nAllow: GET,HEAD,POST,PUT,DELETE,OPTIONS,TRACE\n\n", SERVER_NAME);
+		sprintf(sendBuff, "HTTP/1.1 200 OK\nServer: %s\nContent-Length: 0\nAllow: GET,HEAD,POST,PUT,DELETE,OPTIONS,TRACE\n\n", SERVER_NAME);
 	}
-	else
+	else // sockets[index].sendSubType == UNKNOWN_REQ
 	{
 		sprintf(sendBuff, "HTTP/1.1 404 Not Found\nServer: %s\n\n", SERVER_NAME);
 	}
@@ -367,12 +341,6 @@ void sendMessage(int index, SocketState* sockets)
 	}
 
 	cout << "Time Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n";
-
-	// צריך לבדוק אם בבאפר יש עדיין הודעות אז לעדכן בהתאם
-	// לכן זה לא בהכרח IDLE
-	sockets[index].send = IDLE; // NOT GOOD~~!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
+	sockets[index].send = sockets[index].bufferLen[0] == 0 ? IDLE : SEND; 
 }
 

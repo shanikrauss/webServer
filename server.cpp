@@ -11,27 +11,35 @@ using namespace std;
 #include "SendMsgs.h"
 
 
-// מוסיפות CLINET חדש
-bool addSocket(SOCKET id, int what);
-// מורידים CLINET ישן
-void removeSocket(int index);
+//// מוסיפות CLINET חדש
+//bool addSocket(SOCKET id, int what);
+//// מורידים CLINET ישן
+//void removeSocket(int index);
+//
+//// לקבל לקוח 
+//void acceptConnection(int index);
+//
+////לקבל הודעה
+//void receiveMessage(int index);
+//
+////לשלוח הודעה
+////void sendMessage(int index);
 
-// לקבל לקוח 
-void acceptConnection(int index);
+// הלקוחות מסיימים לא בהכרח לפי הסדר שהם נכנסו
+// נחפש את המקום הראשון שפנוי ונוסיף אותו
+bool addSocket(SocketState* sockets, SOCKET id, int what, int* socketsCount);
 
-//לקבל הודעה
-void receiveMessage(int index);
+// מקבלים אינדקס ומעיפים אותו מהמערך במקום האינדקס
+void removeSocket(SocketState* sockets, int index, int* socketsCount);
 
-//לשלוח הודעה
-//void sendMessage(int index);
+void acceptConnection(SocketState* sockets, int index, int* socketsCount);
+
+void copyAllMsgsToStart(SocketState* socket);
+
+void updateSocketState(SocketState* socket, int type);
 
 
-// שם אותם ככה כי אין לו כוח לשלוח את המערך, צריך להכניס למיין ולהוסיף לפונקציות, כולן צריכות לקבל אותו
-// המערך של הלקוחות איפסנו אותו בהתחלה וגם אפס הגדרנו להיות ריקים 
-struct SocketState sockets[MAX_SOCKETS] = { 0 };
-// אומר כמה במערך תפוסים כאילו כמה לקוחות יש לנו
-int socketsCount = 0;
-
+void receiveMessage(SocketState* sockets, int index, int* socketsCount);
 
 void main()
 {
@@ -50,7 +58,11 @@ void main()
 		cout << "Time Server: Error at WSAStartup()\n";
 		return;
 	}
-
+	// שם אותם ככה כי אין לו כוח לשלוח את המערך, צריך להכניס למיין ולהוסיף לפונקציות, כולן צריכות לקבל אותו
+// המערך של הלקוחות איפסנו אותו בהתחלה וגם אפס הגדרנו להיות ריקים 
+	SocketState sockets[MAX_SOCKETS] = { 0 };
+	// אומר כמה במערך תפוסים כאילו כמה לקוחות יש לנו
+	int socketsCount = 0;
 	// Server side:
 	// Create and bind a socket to an internet address.
 	// Listen through the socket for incoming connections.
@@ -120,11 +132,23 @@ void main()
 		WSACleanup();
 		return;
 	}
-	addSocket(listenSocket, LISTEN);
+	addSocket(sockets, listenSocket, LISTEN, &socketsCount);
 
 	// Accept connections and handles them one by one.
 	while (true)
 	{
+
+		time_t timer;
+		time(&timer);
+		// checking if 2 minutes have passed  since the last request from socket, if so we close the connection
+		for (int i = 0; i < MAX_SOCKETS; i++)
+		{
+			if (sockets[i].recv != EMPTY && sockets[i].send != EMPTY && timer - sockets[i].timeOfLastReq > 120)
+			{
+				removeSocket(sockets, i, &socketsCount);
+			}
+		}
+
 		// The select function determines the status of one or more sockets,
 		// waiting if necessary, to perform asynchronous I/O. Use fd_sets for
 		// sets of handles for reading, writing and exceptions. select gets "timeout" for waiting
@@ -177,11 +201,11 @@ void main()
 				switch (sockets[i].recv)
 				{
 				case LISTEN: // אם הוא בסטטוס הזה אנחנו מקבלים לקוח חדש
-					acceptConnection(i);
+					acceptConnection(sockets, i, &socketsCount);
 					break;
 
 				case RECEIVE: // אנחנו צריכים לקבל הודעה, הגיעה הודעה
-					receiveMessage(i);
+					receiveMessage(sockets, i, &socketsCount);
 					break;
 				}
 			}
@@ -197,7 +221,7 @@ void main()
 				switch (sockets[i].send)
 				{
 				case SEND:
-					sendMessage(i, sockets);
+					sendMessage(sockets, i);
 					break;
 				}
 			}
@@ -212,7 +236,7 @@ void main()
 
 // הלקוחות מסיימים לא בהכרח לפי הסדר שהם נכנסו
 // נחפש את המקום הראשון שפנוי ונוסיף אותו
-bool addSocket(SOCKET id, int what)
+bool addSocket(SocketState* sockets, SOCKET id, int what, int* socketsCount)
 {
 	//
 	// Set the socket to be in non-blocking mode.
@@ -223,6 +247,9 @@ bool addSocket(SOCKET id, int what)
 		cout << "Time Server: Error at ioctlsocket(): " << WSAGetLastError() << endl;
 	}
 
+	time_t timer;
+	time(&timer);
+
 	for (int i = 0; i < MAX_SOCKETS; i++)
 	{
 		if (sockets[i].recv == EMPTY)
@@ -230,9 +257,9 @@ bool addSocket(SOCKET id, int what)
 			sockets[i].id = id;
 			sockets[i].recv = what; // status
 			sockets[i].send = IDLE; 
-			//sockets[i].len = 0;
 			sockets[i].avilable = 0;
-			socketsCount++;
+			(*socketsCount)++;
+			sockets[i].timeOfLastReq = timer;
 			return (true);
 		}
 	}
@@ -240,21 +267,21 @@ bool addSocket(SOCKET id, int what)
 }
 
 // מקבלים אינדקס ומעיפים אותו מהמערך במקום האינדקס
-void removeSocket(int index)
+void removeSocket(SocketState* sockets, int index, int* socketsCount)
 {
 	sockets[index].recv = EMPTY;
 	sockets[index].send = EMPTY;
 
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < MAX_REQUESTS_PER_SOCKET; i++)
 	{
 		sockets[index].buffer[i][0] = '\0';
 		sockets[index].bufferLen[i] = 0;
 	}
 
-	socketsCount--;
+	(*socketsCount)--;
 }
 
-void acceptConnection(int index)
+void acceptConnection(SocketState* sockets, int index, int* socketsCount)
 {
 	SOCKET id = sockets[index].id;
 	struct sockaddr_in from;		// Address of sending partner
@@ -268,7 +295,7 @@ void acceptConnection(int index)
 	}
 	cout << "Time Server: Client " << inet_ntoa(from.sin_addr) << ":" << ntohs(from.sin_port) << " is connected." << endl;
 
-	if (addSocket(msgSocket, RECEIVE) == false)
+	if (addSocket(sockets, msgSocket, RECEIVE, socketsCount) == false)
 	{
 		cout << "\t\tToo many connections, dropped!\n";
 		closesocket(id);
@@ -278,16 +305,16 @@ void acceptConnection(int index)
 
 void copyAllMsgsToStart(SocketState* socket)
 {
-	for (int i = 1; i < 10; i++)
+	for (int i = 1; i < MAX_REQUESTS_PER_SOCKET; i++)
 	{
 		strcpy(socket->buffer[i - 1], socket->buffer[i]);
 		socket->bufferLen[i - 1] = socket->bufferLen[i];
 	}
 
-	socket->buffer[9][0] = '\0';
-	socket->bufferLen[9] = 0;
+	socket->buffer[MAX_REQUESTS_PER_SOCKET - 1][0] = '\0';
+	socket->bufferLen[MAX_REQUESTS_PER_SOCKET - 1] = 0;
 
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < MAX_REQUESTS_PER_SOCKET; i++)
 	{
 		if (socket->bufferLen[i] == 0)
 		{
@@ -305,14 +332,17 @@ void updateSocketState(SocketState* socket, int type)
 	copyAllMsgsToStart(socket);
 }
 
-void receiveMessage(int index)
+void receiveMessage(SocketState* sockets, int index, int* socketsCount)
 {
 	SOCKET msgSocket = sockets[index].id; // הלקוח שלח לנו הודעה
 
 	int avilable = sockets[index].avilable;
 
-	//int bytesRecv = recv(msgSocket, sockets[index].buffer[avilable], sizeof(sockets[index].buffer) - avilable, 0);
 	int bytesRecv = recv(msgSocket, sockets[index].buffer[avilable], sizeof(sockets[index].buffer[avilable]), 0);
+
+	time_t timer;
+	time(&timer);
+	sockets[index].timeOfLastReq = timer;
 
 	// אנחנו מביאים את ההודעה לבאפר
 
@@ -320,87 +350,74 @@ void receiveMessage(int index)
 	{
 		cout << "Time Server: Error at recv(): " << WSAGetLastError() << endl;
 		closesocket(msgSocket);
-		removeSocket(index);
+		removeSocket(sockets, index, socketsCount);
 		return;
 	}
 	if (bytesRecv == 0) // הלקוח סגר את הקשר ואנחנו נמחק אותו מהמערך שלנו
 	{
 		closesocket(msgSocket);
-		removeSocket(index);
+		removeSocket(sockets, index, socketsCount);
 		return;
 	}
-	if (sockets[index].avilable == 10)
+	if (sockets[index].avilable == MAX_REQUESTS_PER_SOCKET)
 	{
 		cout << "\t\tToo many Too many requests!\nThe request was not saved!\n";
 	}
 	else
 	{
 		sockets[index].buffer[avilable][bytesRecv] = '\0'; //add the null-terminating to make it a string
-		//sockets[index].buffer[len + bytesRecv] = '\0'; //add the null-terminating to make it a string
 
 		sockets[index].bufferLen[avilable] = bytesRecv;
 
 		cout << "Time Server: Recieved: " << bytesRecv << " bytes of \"" << sockets[index].buffer[avilable] << "\" message.\n";
 
-		//sockets[index].len += bytesRecv;
-		sockets[index].avilable++; // = sockets[index].avilable + 1 > 9 ? sockets[index].avilable : sockets[index].avilable + 1;
+		sockets[index].avilable++; 
 
 		// כאן מכינים את עצמו לשלב של החזרת התשובה
-		//if (sockets[index].len > 0)
+
 		if (sockets[index].bufferLen[avilable] > 0)
 		{
 			// בודקאיזה הודעה שי בבאפר, ומעדכן את הסוקט בהתאם 
 
-			// כאן יש באגים באורך ההודעה צריך לעדכן 
 			char* buffer = sockets[index].buffer[0];
 
 			if (strncmp(buffer, "GET", 3) == 0)
 			{
 				updateSocketState(&(sockets[index]), GET);
-				return;
 			}
 			else if (strncmp(buffer, "PUT", 3) == 0)
 			{
 				updateSocketState(&(sockets[index]), PUT);
-				return;
 			}
 			else if (strncmp(buffer, "HEAD", 4) == 0)
 			{
 				updateSocketState(&(sockets[index]), HEAD);
-				return;
 			}
 			else if (strncmp(buffer, "POST", 4) == 0)
 			{
 				updateSocketState(&(sockets[index]), POST);
-				return;
 			}
 			else if (strncmp(buffer, "TRACE", 5) == 0)
 			{
 				updateSocketState(&(sockets[index]), TRACE);
-				return;
 			}
 			else if (strncmp(buffer, "DELETE", 6) == 0)
 			{
 				updateSocketState(&(sockets[index]), DELETE);
-				return;
 			}
 			else if (strncmp(buffer, "OPTIONS", 7) == 0)
 			{
 				updateSocketState(&(sockets[index]), OPTIONS);
-				return;
 			}
 			else if (strncmp(buffer, "Exit", 4) == 0)
 			{
-
 				closesocket(msgSocket);
-				removeSocket(index);
-				return;
+				removeSocket(sockets, index, socketsCount);
 			}
 			else
 			{
-
+				updateSocketState(&(sockets[index]), UNKNOWN_REQ);
 			}
-
 		}
 	}
 

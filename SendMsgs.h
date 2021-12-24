@@ -14,6 +14,7 @@ char* getFileName(char* buffer);
 
 FILE* getFilePutReq(char* buffer, int* status, char* statusReq);
 
-void sendMessage(int index, SocketState* sockets);
+void sendMessage(SocketState* sockets, int index);
+
 
 #endif
